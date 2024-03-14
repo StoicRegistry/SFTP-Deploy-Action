@@ -12,32 +12,6 @@ if [ -z "$6" ]; then
    exit 1
 fi
 
-# Function to remove files in the remote path that do not exist in the local path
-sync_directories() {
-
-    echo 'sync_directories 1'
-    local_path=$1
-    remote_path=$2
-    host=$3
-    user=$4
-    port=$5
-    password=$6
-
-    echo 'sync_directories 2'
-    # List files in local directory
-    local_files=$(ls -1 "$local_path")
-
-    echo 'sync_directories 3'
-
-    # Generate a command to list files in the remote directory, compare with local files, and remove the difference
-    remove_command=$(printf "ls -1 %s | grep -vFx -e %s | xargs -r rm -f" "$remote_path" "$local_files")
-
-    echo 'sync_directories 4'
-
-    # Execute the command on the remote server
-    SSHPASS=$password sshpass -e ssh -o StrictHostKeyChecking=no -p $port $user@$host "$remove_command"
-}
-
 # use password
 if [ -z != ${10} ]; then
 	echo 'use sshpass'
@@ -60,9 +34,25 @@ if [ -z != ${10} ]; then
 	#-o StrictHostKeyChecking=no avoid Host key verification failed.
 	SSHPASS=${10} sshpass -e sftp -oBatchMode=no -b $TEMP_SFTP_FILE -P $3 $8 -o StrictHostKeyChecking=no $1@$2
 
-	# Call the function to sync directories
-        echo 'sync_directories start'
-	sync_directories $5 $6 $2 $1 $3 ${10}
+	echo 'Checking for files to remove from remote...'
+	# Step 1: Create a list of filenames in the local directory.
+	local_files=$(find $5 -type f | sed "s|^$5/||" | sort)
+	
+	# Step 2: Create a list of filenames in the remote directory.
+	remote_files=$(sshpass -p ${10} ssh -o StrictHostKeyChecking=no -p $3 $1@$2 "find $6 -type f | sed 's|^$6/||'" | sort)
+	
+	# Step 3: Identify files that are in the remote list but not in the local list.
+	files_to_remove=$(comm -23 <(echo "$remote_files") <(echo "$local_files"))
+	
+	# Step 4: Remove the identified files from the remote path.
+	if [ ! -z "$files_to_remove" ]; then
+	    echo "Removing files from remote that don't exist locally..."
+	    for file in $files_to_remove; do
+	        sshpass -p ${10} ssh -o StrictHostKeyChecking=no -p $3 $1@$2 "rm -f $6/$file"
+	    done
+	else
+	    echo "No files to remove. Remote directory is synced with local."
+	fi
 
 	echo 'Deploy Success'
 
