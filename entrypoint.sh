@@ -16,6 +16,7 @@ fi
 if [ -z != ${10} ]; then
 	echo 'use sshpass'
 	apk add sshpass
+ 	apk add lftp
 
 	if test $9 == "true";then
   		echo 'Start delete remote files'
@@ -29,8 +30,7 @@ if [ -z != ${10} ]; then
 	fi
 
 	echo 'SFTP Start'
-	# Proceed with your file transfer, assuming $TEMP_SFTP_FILE already contains the necessary commands
-	SSHPASS=${10} sshpass -e sftp -oBatchMode=no -b $TEMP_SFTP_FILE -P $3 $8 -o StrictHostKeyChecking=no $1@$2
+	lftp -u $1,${10} -e "set sftp:auto-confirm yes; glob -a mrm -r *; bye" -p $3 sftp://$2
 	# create a temporary file containing sftp commands
 	printf "%s" "put -r $5 $6" >$TEMP_SFTP_FILE
 	#-o StrictHostKeyChecking=no avoid Host key verification failed.
