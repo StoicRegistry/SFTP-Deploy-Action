@@ -14,6 +14,8 @@ fi
 
 # Function to remove files in the remote path that do not exist in the local path
 sync_directories() {
+
+    echo 'sync_directories 1'
     local_path=$1
     remote_path=$2
     host=$3
@@ -21,11 +23,16 @@ sync_directories() {
     port=$5
     password=$6
 
+    echo 'sync_directories 2'
     # List files in local directory
     local_files=$(ls -1 "$local_path")
 
+    echo 'sync_directories 3'
+
     # Generate a command to list files in the remote directory, compare with local files, and remove the difference
     remove_command=$(printf "ls -1 %s | grep -vFx -e %s | xargs -r rm -f" "$remote_path" "$local_files")
+
+    echo 'sync_directories 4'
 
     # Execute the command on the remote server
     SSHPASS=$password sshpass -e ssh -o StrictHostKeyChecking=no -p $port $user@$host "$remove_command"
@@ -54,6 +61,7 @@ if [ -z != ${10} ]; then
 	SSHPASS=${10} sshpass -e sftp -oBatchMode=no -b $TEMP_SFTP_FILE -P $3 $8 -o StrictHostKeyChecking=no $1@$2
 
 	# Call the function to sync directories
+        echo 'sync_directories start'
 	sync_directories $5 $6 $2 $1 $3 ${10}
 
 	echo 'Deploy Success'
