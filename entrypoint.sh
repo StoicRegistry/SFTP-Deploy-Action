@@ -16,6 +16,7 @@ fi
 if [ -z != ${10} ]; then
 	echo 'use sshpass'
 	apk add sshpass
+ 	apk add lftp
 
 	if test $9 == "true";then
   		echo 'Start delete remote files'
@@ -29,36 +30,15 @@ if [ -z != ${10} ]; then
 	fi
 
 	echo 'SFTP Start'
+	# Use lftp to delete all files and folders in the remote directory
+	lftp -u $1,${10} -e "rm -r $6/*; bye" -p $3 sftp://$2
+	# Proceed with your file transfer, assuming $TEMP_SFTP_FILE already contains the necessary commands
+	SSHPASS=${10} sshpass -e sftp -oBatchMode=no -b $TEMP_SFTP_FILE -P $3 $8 -o StrictHostKeyChecking=no $1@$2
 	# create a temporary file containing sftp commands
 	printf "%s" "put -r $5 $6" >$TEMP_SFTP_FILE
 	#-o StrictHostKeyChecking=no avoid Host key verification failed.
 	SSHPASS=${10} sshpass -e sftp -oBatchMode=no -b $TEMP_SFTP_FILE -P $3 $8 -o StrictHostKeyChecking=no $1@$2
-
-	echo 'Checking for files to remove from remote...'
-	# Generate a local file list
-	local_files=$(find "$5" -type f | sed "s|^$5/||" | sort)
-	echo "$local_files" > /tmp/local_files.txt
-	
-	# Generate a remote file list
-	remote_files=$(sshpass -p "${10}" ssh -o StrictHostKeyChecking=no -p "$3" "$1@$2" "find $6 -type f | sed 's|^$6/||'" | sort)
-	echo "$remote_files" > /tmp/remote_files.txt
-	
-	# Identify files to remove
-	files_to_remove=$(comm -23 /tmp/remote_files.txt /tmp/local_files.txt)
-	
-	# Remove the identified files from the remote path
-	if [ ! -z "$files_to_remove" ]; then
-	    echo "Removing files from remote that don't exist locally..."
-	    echo "$files_to_remove" | while IFS= read -r file; do
-	        sshpass -p "${10}" ssh -o StrictHostKeyChecking=no -p "$3" "$1@$2" "rm -f '$6/$file'"
-	    done
-	else
-	    echo "No files to remove. Remote directory is synced with local."
-	fi
-	
-	# Clean up temporary files
-	rm /tmp/local_files.txt /tmp/remote_files.txt
-
+ 
 	echo 'Deploy Success'
 
     exit 0
