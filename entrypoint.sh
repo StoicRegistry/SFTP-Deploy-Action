@@ -30,7 +30,7 @@ if [ -z != ${10} ]; then
 	fi
 
 	echo 'SFTP Start'
-	lftp -u $1,${10} -e "set sftp:auto-confirm yes; glob -a mrm -r *; bye" -p $3 sftp://$2
+	lftp -u $1,${10} -e "set sftp:auto-confirm yes; glob -a rm -r *; bye" -p $3 sftp://$2
 	# create a temporary file containing sftp commands
 	printf "%s" "put -r $5 $6" >$TEMP_SFTP_FILE
 	#-o StrictHostKeyChecking=no avoid Host key verification failed.
