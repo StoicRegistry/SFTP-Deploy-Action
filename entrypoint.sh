@@ -35,24 +35,29 @@ if [ -z != ${10} ]; then
 	SSHPASS=${10} sshpass -e sftp -oBatchMode=no -b $TEMP_SFTP_FILE -P $3 $8 -o StrictHostKeyChecking=no $1@$2
 
 	echo 'Checking for files to remove from remote...'
-	# Step 1: Create a list of filenames in the local directory.
-	local_files=$(find $5 -type f | sed "s|^$5/||" | sort)
+	# Generate a local file list
+	local_files=$(find "$5" -type f | sed "s|^$5/||" | sort)
+	echo "$local_files" > /tmp/local_files.txt
 	
-	# Step 2: Create a list of filenames in the remote directory.
-	remote_files=$(sshpass -p ${10} ssh -o StrictHostKeyChecking=no -p $3 $1@$2 "find $6 -type f | sed 's|^$6/||'" | sort)
+	# Generate a remote file list
+	remote_files=$(sshpass -p "${10}" ssh -o StrictHostKeyChecking=no -p "$3" "$1@$2" "find $6 -type f | sed 's|^$6/||'" | sort)
+	echo "$remote_files" > /tmp/remote_files.txt
 	
-	# Step 3: Identify files that are in the remote list but not in the local list.
-	files_to_remove=$(comm -23 <(echo "$remote_files") <(echo "$local_files"))
+	# Identify files to remove
+	files_to_remove=$(comm -23 /tmp/remote_files.txt /tmp/local_files.txt)
 	
-	# Step 4: Remove the identified files from the remote path.
+	# Remove the identified files from the remote path
 	if [ ! -z "$files_to_remove" ]; then
 	    echo "Removing files from remote that don't exist locally..."
-	    for file in $files_to_remove; do
-	        sshpass -p ${10} ssh -o StrictHostKeyChecking=no -p $3 $1@$2 "rm -f $6/$file"
+	    echo "$files_to_remove" | while IFS= read -r file; do
+	        sshpass -p "${10}" ssh -o StrictHostKeyChecking=no -p "$3" "$1@$2" "rm -f '$6/$file'"
 	    done
 	else
 	    echo "No files to remove. Remote directory is synced with local."
 	fi
+	
+	# Clean up temporary files
+	rm /tmp/local_files.txt /tmp/remote_files.txt
 
 	echo 'Deploy Success'
 
